@@ -10,6 +10,13 @@
   --radius:14px;
 }
 
+.brand-sub{
+  color:var(--accent);
+  font-weight:700;
+  font-size:.9rem;
+}
+
+
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{
   background:var(--bg);
@@ -247,4 +254,28 @@ a{text-decoration:none;color:inherit}
 
 .content-box.active{
   display:grid;
+}
+.support-card{
+  perspective:1000px;
+  transform-style:preserve-3d;
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+
+.support-card::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:18px;
+  background:radial-gradient(
+    circle at var(--x,50%) var(--y,50%),
+    rgba(255,255,255,.15),
+    transparent 60%
+  );
+  opacity:0;
+  transition:.2s;
+  pointer-events:none;
+}
+
+.support-card:hover::after{
+  opacity:1;
 }
