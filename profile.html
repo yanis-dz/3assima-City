@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الإدارة - Assima City RP</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="video-background">
+        <video autoplay muted loop id="myVideo">
+            <source src="https://r2.guns.lol/cb5f1c13-d65e-48a3-bd76-15bf7cb3fa19.mov" type="video/mp4">
+        </video>
+    </div>
+
+    </div>
+    <nav class="navbar">
+        <div class="logo">
+            <img src="logo.png">
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">الرئيسية</a></li>
+            <li><a href="store.html">المتجر</a></li>
+            <li><a href="terms.html">الشروط والأحكام</a></li>
+            <li><a href="suggestions.html">الميزات</a></li>
+            <li><a href="profile.html">الإدارة</a></li>
+        </ul>
+    </nav>
+
+    <main class="profile-page">
+        <h1>فريق الإدارة</h1>
+        <div>
+            <h2>قادة السيرفر</h2>
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <img class="admin-avatar" src="yanix.jpg" alt="السبورت افضل">
+                    <h3> Yanix</h3>
+                    <p>مالك السيرفر</p>
+                </div>
+                <div class="admin-card">
+                    <img class="admin-avatar" src="dragon.png" alt="إداري 2">
+                    <h3> Dragon</h3>
+                    <p>مدير مشاريع</p>
+                </div>
+                <div class="admin-card">
+                    <img class="admin-avatar" src="venom.jpg" alt="إداري 3">
+                    <h3> Venom </h3>
+                    <p>مدير فني</p>
+                </div>
+            </div>
+
+            <h2>مشرفون</h2>
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <img class="admin-avatar" src="akitsu.png" alt="مشرف 1">
+                    <h3> Akitsu </h3>
+                    <p> Devlopper </p>
+                </div>
+                <div class="admin-card">
+                    <img class="admin-avatar" src="ab.jpg" alt="مشرف 2">
+                    <h3> Ab </h3>
+                    <p>مشرف تقني</p>
+                </div>
+            </div>
+
+            <h2>مساعدون</h2>
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <img class="admin-avatar" src="sator.jpg" alt="مساعد 1">
+                    <h3> Sator</h3>
+                    <p>مساعد إداري</p>
+                </div>
+                <div class="admin-card">
+                    <img class="admin-avatar" src="anis.jpg" alt="مساعد 2">
+                    <h3> Anis </h3>
+                    <p>مساعد فني</p>
+                </div>
+                <div class="admin-card">
+                    <img class="admin-avatar" src="even.jpg" alt="مساعد 3">
+                    <h3> Even </h3>
+                    <p>مساعد دعم</p>
+                </div>
+          
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>تواصل معنا </p>
+        <a href="https://discord.gg/JDb3Hyrg" class="discord-button">Discord</a>
+    </footer>
+
+    <script>
+        const musicBtn = document.getElementById('musicToggle');
+        const bgMusic = document.getElementById('bgMusic');
+        let isPlaying = false;
+
+        musicBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                bgMusic.pause();
+                musicBtn.classList.remove('playing');
+            } else {
+                bgMusic.play();
+                musicBtn.classList.add('playing');
+            }
+            isPlaying = !isPlaying;
+        });
+    </script>
+</body>
+</html> 

@@ -1,88 +1,81 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>3assima City RP</title>
-
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سيرفر الحياة الواقعية MTA</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-
-<!-- ================= HEADER ================= -->
-<header class="site-header">
-  <div class="header-inner">
-
-    <!-- ✅ هذا هو الكود الذي طلبته بدون أي تعديل -->
-    <div class="brand">
-      <div class="brand-text">
-        <h1 class="brand-title">3assima City RP</h1>
-      </div>
+    <div class="video-background">
+        <video autoplay muted loop id="myVideo">
+            <source src="𝘽𝙖𝙘𝙠 𝙞𝙩 𝙪𝙥 👉.mp4" type="video/mp4">
+        </video>
     </div>
-    <!-- ================================ -->
 
-    <nav class="main-nav">
-      <a href="index.html" class="nav-link active">الرئيسية</a>
-      <a href="about.html" class="nav-link">من نحن</a>
-      <a href="rules.html" class="nav-link">القوانين</a>
-      <a href="join.html" class="nav-link">الانضمام</a>
+    <div class="music-player">
+        <button id="musicToggle" class="music-btn">
+            <i class="fas fa-music"></i>
+            <audio id="bgMusic" loop>
+                <source src="Didine Canon 16 _ Voyou [slowed reverb].mp3" type="audio/mp3">
+            </audio>
+        </button>
+    </div>
 
-      <div class="nav-dropdown">
-        <a href="#" class="nav-link">الداعمون ▾</a>
-        <div class="dropdown-menu">
-          <a href="about.html#founders">المؤسسون</a>
-          <a href="about.html#supporters">الداعمون</a>
-          <a href="about.html#developers">المبرمجون</a>
-          <a href="about.html#designers">المصممون</a>
+    <nav class="navbar">
+        <div class="logo">
+            <img src="logo.png">
         </div>
-      </div>
+        <ul class="nav-links">
+            <li><a href="index.html">الرئيسية</a></li>
+            <li><a href="store.html">المتجر</a></li>
+            <li><a href="terms.html">الشروط والأحكام</a></li>
+            <li><a href="suggestions.html">الميزات</a></li>
+            <li><a href="profile.html">الإدارة</a></li>
+        </ul>
     </nav>
 
-  </div>
-</header>
+    <header>
+        <h1>3assima City RP </h1>
+    </header>
 
-<!-- ================= CONTENT ================= -->
-<main class="page-wrap">
+    <main>
+        <section class="features">
+            <h2>مميزات السيرفر</h2>
+            <ul>
+                <li>وظائف متعددة ومتنوعة</li>
+                <li>نظام اقتصادي متكامل</li>
+                <li>سيارات واقعية</li>
+                <li>نظام منازل متطور</li>
+                <li>إدارة نشطة ومتفاعلة</li>
+                <li>حياه واقعيه جديده</li>
+            </ul>
+        </section>
 
-  <section class="hero">
-    <div class="hero-left">
-      <span class="hero-eyebrow">Roleplay Server</span>
-      <h2 class="hero-title">مرحبا بكم في 3assima City RP</h2>
-      <p class="hero-lead">
-        تجربة لعب واقعية، أنظمة متطورة، ومجتمع منظم.
-      </p>
+      
+    </main>
 
-      <div class="hero-ctas">
-        <a href="join.html" class="btn btn-solid">الانضمام</a>
-        <a href="rules.html" class="btn btn-ghost">القوانين</a>
-      </div>
-    </div>
+    <footer>
+        <p>تواصل معنا </p>
+        <a href="https://discord.gg/JDb3Hyrg" class="discord-button">Discord</a>
+    </footer>
 
-    <div class="hero-right">
-      <div class="card">
-        <div class="card-title">3assima City RP</div>
-        <p>Assima City RPسيرفر واقعي جزائري يجمع بين الحياة المدنية، الجريمة، والسلطة.أحداث متواصلة، صراعات حقيقية، وقصص تتصنع بقرارات اللاعبين.
-هنا كل اختيار عندو ثمن… وكل يوم قصة جديدة 🔥</p>
-        <p>Role Play</p>
-      </div>
-    </div>
-  </section>
+    <script>
+        const musicBtn = document.getElementById('musicToggle');
+        const bgMusic = document.getElementById('bgMusic');
+        let isPlaying = false;
 
-</main>
-
-<!-- ================= FOOTER ================= -->
-<footer class="site-footer">
-  <div class="footer-inner">
-    <nav class="footer-nav">
-      <a href="index.html">الرئيسية</a>
-      <a href="about.html">من نحن</a>
-      <a href="join.html">الانضمام</a>
-    </nav>
-
-  <a> <p>3assima City RP</p> </a>
-  </div>
-</footer>
-
-<script src="script.js"></script>
+        musicBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                bgMusic.pause();
+                musicBtn.classList.remove('playing');
+            } else {
+                bgMusic.play();
+                musicBtn.classList.add('playing');
+            }
+            isPlaying = !isPlaying;
+        });
+    </script>
 </body>
-</html>
+</html> 
