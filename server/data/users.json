@@ -1,0 +1,37 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "owner",
+      "email": "owner@rixel.com",
+      "password": "$2a$10$EyTUyHOAk0bKnZ375nvJQOAz5MrpYAKXnc4/FEurHUsAqeVRNYocK",
+      "role": "owner",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "mtaLinkCode": "ZHS8W2"
+    },
+    {
+      "username": "skinz.z",
+      "email": "venomdz0099@gmail.com",
+      "password": "$2a$10$x9bKgweYvrvshfkh42DnZ.NwYvz3uT/iImMnU5iavWG8166YrLUjq",
+      "role": "moderator",
+      "id": 2,
+      "createdAt": "2026-06-09T17:42:30.992Z",
+      "discordId": "1458953203327439021",
+      "discordUsername": "skinz.z",
+      "discordAvatarUrl": "https://cdn.discordapp.com/avatars/1458953203327439021/195bb6ad9215ca83b9d4df37b9e0005a.png",
+      "mtaLinkCode": "ZNEWD7"
+    },
+    {
+      "username": "user_yanis",
+      "email": "mahtal.yanis2009@gmail.com",
+      "password": "$2a$10$ZWG1624CrUMDw7K2f0/mhujuypBjeKa7jrNtKt6Tg4kD86nfaIVy.",
+      "role": "user",
+      "id": 3,
+      "createdAt": "2026-06-10T19:10:51.531Z",
+      "discordId": "1367852354744877156",
+      "discordUsername": "user_yanis",
+      "discordAvatarUrl": "https://cdn.discordapp.com/avatars/1367852354744877156/c37de36000798da8b1c1032c121cd6c0.png"
+    }
+  ],
+  "nextId": 4
+}
