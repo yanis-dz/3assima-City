@@ -1,0 +1,11 @@
+{
+  "rules": [
+    {
+      "title": "قوانين داخل اللعبة",
+      "description": "ولا",
+      "category": "Gameplay",
+      "id": 1
+    }
+  ],
+  "nextId": 2
+}

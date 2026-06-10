@@ -1,0 +1,12 @@
+{
+  "staff": [
+    {
+      "username": "loay",
+      "role": "Owner",
+      "avatarUrl": "https://www.shareicon.net/data/2016/07/26/802007_man_512x512.png;width=128;height=128",
+      "id": 1,
+      "order": 1
+    }
+  ],
+  "nextId": 2
+}

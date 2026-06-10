@@ -1,0 +1,29 @@
+{
+  "accounts": [
+    {
+      "userId": 2,
+      "provider": "discord",
+      "providerId": "1458953203327439021",
+      "email": "venomdz0099@gmail.com",
+      "username": "skinz.z",
+      "avatarUrl": "https://cdn.discordapp.com/avatars/1458953203327439021/195bb6ad9215ca83b9d4df37b9e0005a.png",
+      "accessToken": "MTQ2NDk5MjczMzA4NDEyMzQwOQ.xnUelV0xq5wb5FFg8PTcZHFzGLLmm1",
+      "refreshToken": "ODZuXTdWZ2KHAA5XzI7ynHkM4UL5ys",
+      "id": 1,
+      "createdAt": "2026-06-09T17:42:30.998Z"
+    },
+    {
+      "userId": 3,
+      "provider": "discord",
+      "providerId": "1367852354744877156",
+      "email": "mahtal.yanis2009@gmail.com",
+      "username": "user_yanis",
+      "avatarUrl": "https://cdn.discordapp.com/avatars/1367852354744877156/c37de36000798da8b1c1032c121cd6c0.png",
+      "accessToken": "MTQ2NDk5MjczMzA4NDEyMzQwOQ.pSZuZxdlhp64Kc6X9LeiKeK2lStxD6",
+      "refreshToken": "KPl8actAsIAPH8BwplGwsjsk31KD4v",
+      "id": 2,
+      "createdAt": "2026-06-10T19:10:51.585Z"
+    }
+  ],
+  "nextId": 3
+}
