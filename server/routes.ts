@@ -1454,6 +1454,19 @@ app.post("/api/mta/player-update", async (req, res) => {
       res.status(500).json({ message: "فشل في جلب الإحصائيات" });
     }
   });
+  
+  // حفظ بيانات الملف الشخصي
+app.put("/api/user/profile", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const { fullName, phone, bio } = req.body;
+    await storage.updateUser(userId, { fullName, phone, bio } as any);
+    const user = await storage.getUserById(userId);
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ message: "فشل الحفظ" });
+  }
+});
 
   app.get("/api/user/game-data", requireAuth, async (req, res) => {
     try {
