@@ -1,5 +1,4 @@
-import * as fs from "fs";
-import * as path from "path";
+import mysql from "mysql2/promise";
 import type {
   User, InsertUser,
   News, InsertNews,
@@ -13,661 +12,533 @@ import type {
   OAuthAccount, ApiKey, PendingOrder
 } from "@shared/schema";
 
-const DATA_DIR = path.join(process.cwd(), "server", "data");
+// =============================================
+// اتصال قاعدة البيانات
+// =============================================
+const pool = mysql.createPool({
+  uri: process.env.DATABASE_URL,
+  waitForConnections: true,
+  connectionLimit: 10,
+  charset: "utf8mb4",
+});
 
-function readJson<T>(filename: string): T {
-  const filePath = path.join(DATA_DIR, filename);
-  if (!fs.existsSync(filePath)) {
-    return { nextId: 1 } as T;
+async function query(sql: string, params: any[] = []): Promise<any> {
+  const [rows] = await pool.execute(sql, params);
+  return rows;
+}
+
+// =============================================
+// إنشاء الجداول تلقائياً
+// =============================================
+async function initTables() {
+  await query(`CREATE TABLE IF NOT EXISTS site_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255),
+    role VARCHAR(50) DEFAULT 'user',
+    fullName VARCHAR(255),
+    phone VARCHAR(50),
+    bio TEXT,
+    avatarUrl TEXT,
+    discordId VARCHAR(255),
+    discordUsername VARCHAR(255),
+    discordAvatarUrl TEXT,
+    mtaUsername VARCHAR(255),
+    mtaLinkCode VARCHAR(50),
+    createdAt DATETIME DEFAULT NOW()
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_news (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    author VARCHAR(255),
+    imageUrl TEXT,
+    createdAt DATETIME DEFAULT NOW()
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_staff (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    role VARCHAR(255),
+    avatarUrl TEXT,
+    \`order\` INT DEFAULT 0
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_rules (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(255)
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    imageUrl TEXT,
+    category VARCHAR(255),
+    inStock BOOLEAN DEFAULT TRUE,
+    currency VARCHAR(50) DEFAULT 'game_money',
+    discount INT DEFAULT 0,
+    type VARCHAR(50) DEFAULT 'item'
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_settings (
+    id INT PRIMARY KEY DEFAULT 1,
+    serverName VARCHAR(255),
+    serverNameAr VARCHAR(255),
+    serverIp VARCHAR(255),
+    discordLink TEXT,
+    forumLink TEXT,
+    heroTitle VARCHAR(255),
+    heroSubtitle TEXT,
+    footerText TEXT
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_tickets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    userId INT NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    category VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'open',
+    adminResponse TEXT,
+    createdAt DATETIME DEFAULT NOW(),
+    updatedAt DATETIME DEFAULT NOW()
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_ticket_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ticketId INT NOT NULL,
+    userId INT NOT NULL,
+    message TEXT NOT NULL,
+    isAdmin BOOLEAN DEFAULT FALSE,
+    createdAt DATETIME DEFAULT NOW()
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_faqs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    category VARCHAR(255),
+    \`order\` INT DEFAULT 0
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_balances (
+    userId INT PRIMARY KEY,
+    usd DECIMAL(10,2) DEFAULT 0,
+    sar DECIMAL(10,2) DEFAULT 0,
+    points INT DEFAULT 0
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    userId INT NOT NULL,
+    type VARCHAR(50),
+    amount DECIMAL(10,2),
+    currency VARCHAR(50),
+    description TEXT,
+    status VARCHAR(50),
+    createdAt DATETIME DEFAULT NOW()
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_oauth_accounts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    userId INT NOT NULL,
+    provider VARCHAR(50) NOT NULL,
+    providerId VARCHAR(255) NOT NULL,
+    username VARCHAR(255),
+    avatarUrl TEXT,
+    createdAt DATETIME DEFAULT NOW()
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_api_keys (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    key_value VARCHAR(255) UNIQUE NOT NULL,
+    isActive BOOLEAN DEFAULT TRUE,
+    lastUsed DATETIME,
+    createdAt DATETIME DEFAULT NOW()
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS site_pending_orders (
+    orderId VARCHAR(255) PRIMARY KEY,
+    userId INT,
+    productId INT,
+    amount DECIMAL(10,2),
+    currency VARCHAR(50),
+    status VARCHAR(50),
+    createdAt DATETIME DEFAULT NOW()
+  )`);
+
+  // إضافة إعدادات افتراضية إذا ما كانت موجودة
+  const settings = await query(`SELECT id FROM site_settings WHERE id = 1`);
+  if (!settings.length) {
+    await query(`INSERT INTO site_settings (id, serverName, serverNameAr, serverIp, discordLink, heroTitle, heroSubtitle, footerText)
+      VALUES (1, 'Assima City', 'عاصمة سيتي', '82.22.174.127:22011', 'https://discord.gg/kZyMWTawKY', 'Assima City', 'انضم إلى سيرفرنا واستمتع بأفضل تجربة لعب حياة واقعية', 'أفضل تجربة لعب حياة واقعية في MTA')`);
   }
-  const data = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(data);
+
+  console.log("[MySQL] Tables initialized successfully");
 }
 
-function writeJson<T>(filename: string, data: T): void {
-  const filePath = path.join(DATA_DIR, filename);
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-}
+initTables().catch(console.error);
 
-interface UsersData {
-  users: User[];
-  nextId: number;
-}
-
-interface NewsData {
-  news: News[];
-  nextId: number;
-}
-
-interface StaffData {
-  staff: Staff[];
-  nextId: number;
-}
-
-interface RulesData {
-  rules: Rule[];
-  nextId: number;
-}
-
-interface ProductsData {
-  products: Product[];
-  nextId: number;
-}
-
-interface TicketsData {
-  tickets: Ticket[];
-  nextId: number;
-}
-
-interface TicketMessagesData {
-  messages: TicketMessage[];
-  nextId: number;
-}
-
-interface FaqsData {
-  faqs: Faq[];
-  nextId: number;
-}
-
-interface BalancesData {
-  balances: Balance[];
-}
-
-interface TransactionsData {
-  transactions: Transaction[];
-  nextId: number;
-}
-
-interface OAuthAccountsData {
-  accounts: OAuthAccount[];
-  nextId: number;
-}
-
-interface ApiKeysData {
-  keys: ApiKey[];
-  nextId: number;
-}
-
-interface PendingOrdersData {
-  orders: PendingOrder[];
-}
-
+// =============================================
+// Storage Class
+// =============================================
 export class JsonStorage {
+
+  // USERS
   async getUsers(): Promise<User[]> {
-    const data = readJson<UsersData>("users.json");
-    return data.users || [];
+    return query(`SELECT * FROM site_users`);
   }
   async getAllUsers(): Promise<User[]> {
-  const data = readJson<UsersData>("users.json");
-  return data.users || [];
-}
-
+    return query(`SELECT * FROM site_users`);
+  }
   async getUserById(id: number): Promise<User | undefined> {
-    const users = await this.getUsers();
-    return users.find(u => u.id === id);
+    const rows = await query(`SELECT * FROM site_users WHERE id = ?`, [id]);
+    return rows[0];
   }
-
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const users = await this.getUsers();
-    return users.find(u => u.email === email);
+    const rows = await query(`SELECT * FROM site_users WHERE email = ?`, [email]);
+    return rows[0];
   }
-
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const users = await this.getUsers();
-    return users.find(u => u.username === username);
+    const rows = await query(`SELECT * FROM site_users WHERE username = ?`, [username]);
+    return rows[0];
   }
-
   async createUser(user: InsertUser): Promise<User> {
-    const data = readJson<UsersData>("users.json");
-    const newUser: User = {
-      ...user,
-      id: data.nextId,
-      createdAt: new Date().toISOString(),
-    };
-    data.users.push(newUser);
-    data.nextId++;
-    writeJson("users.json", data);
-    return newUser;
+    const result = await query(
+      `INSERT INTO site_users (username, email, password, role) VALUES (?, ?, ?, ?)`,
+      [user.username, user.email, user.password, (user as any).role || 'user']
+    );
+    return this.getUserById(result.insertId) as Promise<User>;
   }
-
   async updateUser(id: number, updates: Partial<User>): Promise<User | undefined> {
-    const data = readJson<UsersData>("users.json");
-    const index = data.users.findIndex(u => u.id === id);
-    if (index === -1) return undefined;
-    data.users[index] = { ...data.users[index], ...updates };
-    writeJson("users.json", data);
-    return data.users[index];
+    const fields = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    const values = Object.values(updates);
+    if (!fields) return this.getUserById(id);
+    await query(`UPDATE site_users SET ${fields} WHERE id = ?`, [...values, id]);
+    return this.getUserById(id);
   }
-
   async deleteUser(id: number): Promise<boolean> {
-    const data = readJson<UsersData>("users.json");
-    const index = data.users.findIndex(u => u.id === id);
-    if (index === -1) return false;
-    data.users.splice(index, 1);
-    writeJson("users.json", data);
-    return true;
+    const result = await query(`DELETE FROM site_users WHERE id = ?`, [id]);
+    return result.affectedRows > 0;
   }
 
+  // NEWS
   async getNews(): Promise<News[]> {
-    const data = readJson<NewsData>("news.json");
-    return (data.news || []).sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return query(`SELECT * FROM site_news ORDER BY createdAt DESC`);
   }
-
   async createNews(news: InsertNews): Promise<News> {
-    const data = readJson<NewsData>("news.json");
-    if (!data.news) data.news = [];
-    const newNews: News = {
-      ...news,
-      id: data.nextId,
-      createdAt: new Date().toISOString(),
-    };
-    data.news.push(newNews);
-    data.nextId++;
-    writeJson("news.json", data);
-    return newNews;
+    const result = await query(
+      `INSERT INTO site_news (title, content, author, imageUrl) VALUES (?, ?, ?, ?)`,
+      [news.title, news.content, news.author, news.imageUrl]
+    );
+    const rows = await query(`SELECT * FROM site_news WHERE id = ?`, [result.insertId]);
+    return rows[0];
   }
-
   async updateNews(id: number, updates: Partial<News>): Promise<News | undefined> {
-    const data = readJson<NewsData>("news.json");
-    const index = data.news.findIndex(n => n.id === id);
-    if (index === -1) return undefined;
-    data.news[index] = { ...data.news[index], ...updates };
-    writeJson("news.json", data);
-    return data.news[index];
+    const fields = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    const values = Object.values(updates);
+    await query(`UPDATE site_news SET ${fields} WHERE id = ?`, [...values, id]);
+    const rows = await query(`SELECT * FROM site_news WHERE id = ?`, [id]);
+    return rows[0];
   }
-
   async deleteNews(id: number): Promise<boolean> {
-    const data = readJson<NewsData>("news.json");
-    const index = data.news.findIndex(n => n.id === id);
-    if (index === -1) return false;
-    data.news.splice(index, 1);
-    writeJson("news.json", data);
-    return true;
+    const result = await query(`DELETE FROM site_news WHERE id = ?`, [id]);
+    return result.affectedRows > 0;
   }
 
+  // STAFF
   async getStaff(): Promise<Staff[]> {
-    const data = readJson<StaffData>("staff.json");
-    return (data.staff || []).sort((a, b) => a.order - b.order);
+    return query(`SELECT * FROM site_staff ORDER BY \`order\` ASC`);
   }
-
   async createStaff(staff: InsertStaff): Promise<Staff> {
-    const data = readJson<StaffData>("staff.json");
-    if (!data.staff) data.staff = [];
-    const newStaff: Staff = {
-      ...staff,
-      id: data.nextId,
-      order: data.staff.length + 1,
-    };
-    data.staff.push(newStaff);
-    data.nextId++;
-    writeJson("staff.json", data);
-    return newStaff;
+    const result = await query(
+      `INSERT INTO site_staff (username, role, avatarUrl, \`order\`) VALUES (?, ?, ?, ?)`,
+      [staff.username, staff.role, staff.avatarUrl, (staff as any).order || 0]
+    );
+    const rows = await query(`SELECT * FROM site_staff WHERE id = ?`, [result.insertId]);
+    return rows[0];
   }
-
   async updateStaff(id: number, updates: Partial<Staff>): Promise<Staff | undefined> {
-    const data = readJson<StaffData>("staff.json");
-    const index = data.staff.findIndex(s => s.id === id);
-    if (index === -1) return undefined;
-    data.staff[index] = { ...data.staff[index], ...updates };
-    writeJson("staff.json", data);
-    return data.staff[index];
+    const fields = Object.keys(updates).map(k => `\`${k}\` = ?`).join(', ');
+    const values = Object.values(updates);
+    await query(`UPDATE site_staff SET ${fields} WHERE id = ?`, [...values, id]);
+    const rows = await query(`SELECT * FROM site_staff WHERE id = ?`, [id]);
+    return rows[0];
   }
-
   async deleteStaff(id: number): Promise<boolean> {
-    const data = readJson<StaffData>("staff.json");
-    const index = data.staff.findIndex(s => s.id === id);
-    if (index === -1) return false;
-    data.staff.splice(index, 1);
-    writeJson("staff.json", data);
-    return true;
+    const result = await query(`DELETE FROM site_staff WHERE id = ?`, [id]);
+    return result.affectedRows > 0;
   }
 
+  // RULES
   async getRules(): Promise<Rule[]> {
-    const data = readJson<RulesData>("rules.json");
-    return data.rules || [];
+    return query(`SELECT * FROM site_rules`);
   }
-
   async createRule(rule: InsertRule): Promise<Rule> {
-    const data = readJson<RulesData>("rules.json");
-    if (!data.rules) data.rules = [];
-    const newRule: Rule = {
-      ...rule,
-      id: data.nextId,
-    };
-    data.rules.push(newRule);
-    data.nextId++;
-    writeJson("rules.json", data);
-    return newRule;
+    const result = await query(
+      `INSERT INTO site_rules (title, description, category) VALUES (?, ?, ?)`,
+      [rule.title, rule.description, rule.category]
+    );
+    const rows = await query(`SELECT * FROM site_rules WHERE id = ?`, [result.insertId]);
+    return rows[0];
   }
-
   async updateRule(id: number, updates: Partial<Rule>): Promise<Rule | undefined> {
-    const data = readJson<RulesData>("rules.json");
-    const index = data.rules.findIndex(r => r.id === id);
-    if (index === -1) return undefined;
-    data.rules[index] = { ...data.rules[index], ...updates };
-    writeJson("rules.json", data);
-    return data.rules[index];
+    const fields = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    const values = Object.values(updates);
+    await query(`UPDATE site_rules SET ${fields} WHERE id = ?`, [...values, id]);
+    const rows = await query(`SELECT * FROM site_rules WHERE id = ?`, [id]);
+    return rows[0];
   }
-
   async deleteRule(id: number): Promise<boolean> {
-    const data = readJson<RulesData>("rules.json");
-    const index = data.rules.findIndex(r => r.id === id);
-    if (index === -1) return false;
-    data.rules.splice(index, 1);
-    writeJson("rules.json", data);
-    return true;
+    const result = await query(`DELETE FROM site_rules WHERE id = ?`, [id]);
+    return result.affectedRows > 0;
   }
 
+  // PRODUCTS
   async getProducts(): Promise<Product[]> {
-    const data = readJson<ProductsData>("store.json");
-    return data.products || [];
+    return query(`SELECT * FROM site_products`);
   }
-
   async getProductById(id: number): Promise<Product | undefined> {
-    const products = await this.getProducts();
-    return products.find(p => p.id === id);
+    const rows = await query(`SELECT * FROM site_products WHERE id = ?`, [id]);
+    return rows[0];
   }
-
   async createProduct(product: InsertProduct): Promise<Product> {
-    const data = readJson<ProductsData>("store.json");
-    if (!data.products) data.products = [];
-    const newProduct: Product = {
-      ...product,
-      id: data.nextId,
-      type: product.type || "item",
-      currency: product.currency || "game_money",
-      discount: product.discount || 0,
-      imageUrl: product.imageUrl || null,
-      inStock: product.inStock ?? true
-    };
-    data.products.push(newProduct);
-    data.nextId++;
-    writeJson("store.json", data);
-    return newProduct;
+    const result = await query(
+      `INSERT INTO site_products (name, description, price, imageUrl, category, inStock, currency, discount, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [product.name, product.description, product.price, product.imageUrl, product.category, product.inStock ?? true, product.currency || 'game_money', product.discount || 0, (product as any).type || 'item']
+    );
+    return this.getProductById(result.insertId) as Promise<Product>;
   }
-
   async updateProduct(id: number, updates: Partial<Product>): Promise<Product | undefined> {
-    const data = readJson<ProductsData>("store.json");
-    const index = data.products.findIndex(p => p.id === id);
-    if (index === -1) return undefined;
-    data.products[index] = { ...data.products[index], ...updates };
-    writeJson("store.json", data);
-    return data.products[index];
+    const fields = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    const values = Object.values(updates);
+    await query(`UPDATE site_products SET ${fields} WHERE id = ?`, [...values, id]);
+    return this.getProductById(id);
   }
-
   async deleteProduct(id: number): Promise<boolean> {
-    const data = readJson<ProductsData>("store.json");
-    const index = data.products.findIndex(p => p.id === id);
-    if (index === -1) return false;
-    data.products.splice(index, 1);
-    writeJson("store.json", data);
-    return true;
+    const result = await query(`DELETE FROM site_products WHERE id = ?`, [id]);
+    return result.affectedRows > 0;
   }
 
+  // SETTINGS
   async getSettings(): Promise<Settings> {
-    const data = readJson<Settings>("settings.json");
-    return {
-      serverName: data.serverName || "Assima City",
-      serverNameAr: data.serverNameAr || "Assima City للحياة الواقعية",
-      serverIp: data.serverIp || "109.176.229.142:22003",
-      discordLink: data.discordLink || "",
-      forumLink: data.forumLink || "",
-      heroTitle: data.heroTitle || "Assima City",
-      heroSubtitle: data.heroSubtitle || "انضم إلى سيرفرنا واستمتع بأفضل تجربة لعب حياة واقعية",
-      footerText: data.footerText || "أفضل تجربة لعب حياة واقعية في MTA",
-    };
+    const rows = await query(`SELECT * FROM site_settings WHERE id = 1`);
+    if (!rows.length) {
+      return {
+        serverName: "Assima City",
+        serverNameAr: "عاصمة سيتي",
+        serverIp: "82.22.174.127:22011",
+        discordLink: "https://discord.gg/kZyMWTawKY",
+        forumLink: "",
+        heroTitle: "Assima City",
+        heroSubtitle: "انضم إلى سيرفرنا واستمتع بأفضل تجربة لعب حياة واقعية",
+        footerText: "أفضل تجربة لعب حياة واقعية في MTA",
+      };
+    }
+    return rows[0];
   }
-
   async updateSettings(settings: Partial<Settings>): Promise<Settings> {
-    const current = await this.getSettings();
-    const updated = { ...current, ...settings };
-    writeJson("settings.json", updated);
-    return updated;
+    const fields = Object.keys(settings).map(k => `${k} = ?`).join(', ');
+    const values = Object.values(settings);
+    await query(`UPDATE site_settings SET ${fields} WHERE id = 1`, values);
+    return this.getSettings();
   }
 
+  // TICKETS
   async getTickets(): Promise<Ticket[]> {
-    const data = readJson<TicketsData>("tickets.json");
-    return (data.tickets || []).sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return query(`SELECT * FROM site_tickets ORDER BY createdAt DESC`);
   }
-
   async getTicketsByUserId(userId: number): Promise<Ticket[]> {
-    const tickets = await this.getTickets();
-    return tickets.filter(t => t.userId === userId);
+    return query(`SELECT * FROM site_tickets WHERE userId = ? ORDER BY createdAt DESC`, [userId]);
   }
-
   async getTicketById(id: number): Promise<Ticket | undefined> {
-    const tickets = await this.getTickets();
-    return tickets.find(t => t.id === id);
+    const rows = await query(`SELECT * FROM site_tickets WHERE id = ?`, [id]);
+    return rows[0];
   }
-
   async createTicket(ticket: InsertTicket): Promise<Ticket> {
-    const data = readJson<TicketsData>("tickets.json");
-    if (!data.tickets) data.tickets = [];
-    const now = new Date().toISOString();
-    const newTicket: Ticket = {
-      ...ticket,
-      id: data.nextId || 1,
-      status: "open",
-      adminResponse: null,
-      createdAt: now,
-      updatedAt: now,
-    };
-    data.tickets.push(newTicket);
-    data.nextId = (data.nextId || 1) + 1;
-    writeJson("tickets.json", data);
-    return newTicket;
-  }
-
-  async updateTicket(id: number, updates: Partial<Ticket>): Promise<Ticket | undefined> {
-    const data = readJson<TicketsData>("tickets.json");
-    if (!data.tickets) return undefined;
-    const index = data.tickets.findIndex(t => t.id === id);
-    if (index === -1) return undefined;
-    data.tickets[index] = {
-      ...data.tickets[index],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-    writeJson("tickets.json", data);
-    return data.tickets[index];
-  }
-
-  async deleteTicket(id: number): Promise<boolean> {
-    const data = readJson<TicketsData>("tickets.json");
-    if (!data.tickets) return false;
-    const index = data.tickets.findIndex(t => t.id === id);
-    if (index === -1) return false;
-    data.tickets.splice(index, 1);
-    writeJson("tickets.json", data);
-    return true;
-  }
-
-  async getTicketMessages(ticketId: number): Promise<TicketMessage[]> {
-    const data = readJson<TicketMessagesData>("ticket_messages.json");
-    return (data.messages || []).filter(m => m.ticketId === ticketId).sort((a, b) =>
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    const result = await query(
+      `INSERT INTO site_tickets (userId, subject, message, category) VALUES (?, ?, ?, ?)`,
+      [ticket.userId, ticket.subject, ticket.message, ticket.category]
     );
+    return this.getTicketById(result.insertId) as Promise<Ticket>;
+  }
+  async updateTicket(id: number, updates: Partial<Ticket>): Promise<Ticket | undefined> {
+    const fields = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    const values = Object.values(updates);
+    await query(`UPDATE site_tickets SET ${fields}, updatedAt = NOW() WHERE id = ?`, [...values, id]);
+    return this.getTicketById(id);
+  }
+  async deleteTicket(id: number): Promise<boolean> {
+    const result = await query(`DELETE FROM site_tickets WHERE id = ?`, [id]);
+    return result.affectedRows > 0;
   }
 
+  // TICKET MESSAGES
+  async getTicketMessages(ticketId: number): Promise<TicketMessage[]> {
+    return query(`SELECT * FROM site_ticket_messages WHERE ticketId = ? ORDER BY createdAt ASC`, [ticketId]);
+  }
   async createTicketMessage(message: Omit<TicketMessage, "id" | "createdAt">): Promise<TicketMessage> {
-    const data = readJson<TicketMessagesData>("ticket_messages.json");
-    if (!data.messages) data.messages = [];
-    const newMessage: TicketMessage = {
-      ...message,
-      id: data.nextId || 1,
-      createdAt: new Date().toISOString(),
-    };
-    data.messages.push(newMessage);
-    data.nextId = (data.nextId || 1) + 1;
-    writeJson("ticket_messages.json", data);
-    return newMessage;
+    const result = await query(
+      `INSERT INTO site_ticket_messages (ticketId, userId, message, isAdmin) VALUES (?, ?, ?, ?)`,
+      [message.ticketId, message.userId, message.message, message.isAdmin || false]
+    );
+    const rows = await query(`SELECT * FROM site_ticket_messages WHERE id = ?`, [result.insertId]);
+    return rows[0];
   }
 
+  // FAQS
   async getFaqs(): Promise<Faq[]> {
-    const data = readJson<FaqsData>("faqs.json");
-    return (data.faqs || []).sort((a, b) => a.order - b.order);
+    return query(`SELECT * FROM site_faqs ORDER BY \`order\` ASC`);
   }
-
   async getFaqsByCategory(category: string): Promise<Faq[]> {
-    const faqs = await this.getFaqs();
-    return faqs.filter(f => f.category === category);
+    return query(`SELECT * FROM site_faqs WHERE category = ? ORDER BY \`order\` ASC`, [category]);
   }
-
   async createFaq(faq: InsertFaq): Promise<Faq> {
-    const data = readJson<FaqsData>("faqs.json");
-    if (!data.faqs) data.faqs = [];
-    const newFaq: Faq = {
-      ...faq,
-      id: data.nextId || 1,
-      order: data.faqs.length + 1,
-    };
-    data.faqs.push(newFaq);
-    data.nextId = (data.nextId || 1) + 1;
-    writeJson("faqs.json", data);
-    return newFaq;
+    const count = await query(`SELECT COUNT(*) as cnt FROM site_faqs`);
+    const result = await query(
+      `INSERT INTO site_faqs (question, answer, category, \`order\`) VALUES (?, ?, ?, ?)`,
+      [faq.question, faq.answer, faq.category, count[0].cnt + 1]
+    );
+    const rows = await query(`SELECT * FROM site_faqs WHERE id = ?`, [result.insertId]);
+    return rows[0];
   }
-
   async updateFaq(id: number, updates: Partial<Faq>): Promise<Faq | undefined> {
-    const data = readJson<FaqsData>("faqs.json");
-    if (!data.faqs) return undefined;
-    const index = data.faqs.findIndex(f => f.id === id);
-    if (index === -1) return undefined;
-    data.faqs[index] = { ...data.faqs[index], ...updates };
-    writeJson("faqs.json", data);
-    return data.faqs[index];
+    const fields = Object.keys(updates).map(k => `\`${k}\` = ?`).join(', ');
+    const values = Object.values(updates);
+    await query(`UPDATE site_faqs SET ${fields} WHERE id = ?`, [...values, id]);
+    const rows = await query(`SELECT * FROM site_faqs WHERE id = ?`, [id]);
+    return rows[0];
   }
-
   async deleteFaq(id: number): Promise<boolean> {
-    const data = readJson<FaqsData>("faqs.json");
-    if (!data.faqs) return false;
-    const index = data.faqs.findIndex(f => f.id === id);
-    if (index === -1) return false;
-    data.faqs.splice(index, 1);
-    writeJson("faqs.json", data);
-    return true;
+    const result = await query(`DELETE FROM site_faqs WHERE id = ?`, [id]);
+    return result.affectedRows > 0;
   }
 
+  // BALANCES
   async getBalance(userId: number): Promise<Balance> {
-    const data = readJson<BalancesData>("balances.json");
-    if (!data.balances) data.balances = [];
-    const balance = data.balances.find(b => b.userId === userId);
-    if (!balance) {
-      return { userId, usd: 0, sar: 0, points: 0 };
-    }
-    return balance;
+    const rows = await query(`SELECT * FROM site_balances WHERE userId = ?`, [userId]);
+    if (!rows.length) return { userId, usd: 0, sar: 0, points: 0 };
+    return rows[0];
   }
-
   async updateBalance(userId: number, updates: Partial<Balance>): Promise<Balance> {
-    const data = readJson<BalancesData>("balances.json");
-    if (!data.balances) data.balances = [];
-    const index = data.balances.findIndex(b => b.userId === userId);
-    if (index === -1) {
-      const newBalance: Balance = { userId, usd: 0, sar: 0, points: 0, ...updates };
-      data.balances.push(newBalance);
-      writeJson("balances.json", data);
-      return newBalance;
+    const existing = await query(`SELECT userId FROM site_balances WHERE userId = ?`, [userId]);
+    if (!existing.length) {
+      await query(`INSERT INTO site_balances (userId, usd, sar, points) VALUES (?, ?, ?, ?)`,
+        [userId, updates.usd || 0, updates.sar || 0, updates.points || 0]);
+    } else {
+      const fields = Object.keys(updates).filter(k => k !== 'userId').map(k => `${k} = ?`).join(', ');
+      const values = Object.entries(updates).filter(([k]) => k !== 'userId').map(([, v]) => v);
+      if (fields) await query(`UPDATE site_balances SET ${fields} WHERE userId = ?`, [...values, userId]);
     }
-    data.balances[index] = { ...data.balances[index], ...updates };
-    writeJson("balances.json", data);
-    return data.balances[index];
+    return this.getBalance(userId);
   }
-
   async addToBalance(userId: number, currency: "usd" | "sar" | "points", amount: number): Promise<Balance> {
     const balance = await this.getBalance(userId);
-    const newAmount = balance[currency] + amount;
-    return this.updateBalance(userId, { [currency]: newAmount });
+    return this.updateBalance(userId, { [currency]: balance[currency] + amount });
   }
 
+  // TRANSACTIONS
   async getTransactions(userId?: number): Promise<Transaction[]> {
-    const data = readJson<TransactionsData>("transactions.json");
-    if (!data.transactions) return [];
-    if (userId) {
-      return data.transactions.filter(t => t.userId === userId)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }
-    return data.transactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    if (userId) return query(`SELECT * FROM site_transactions WHERE userId = ? ORDER BY createdAt DESC`, [userId]);
+    return query(`SELECT * FROM site_transactions ORDER BY createdAt DESC`);
   }
-
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    const data = readJson<TransactionsData>("transactions.json");
-    if (!data.transactions) data.transactions = [];
-    const newTransaction: Transaction = {
-      ...transaction,
-      id: data.nextId || 1,
-      createdAt: new Date().toISOString(),
-    };
-    data.transactions.push(newTransaction);
-    data.nextId = (data.nextId || 1) + 1;
-    writeJson("transactions.json", data);
-    return newTransaction;
+    const result = await query(
+      `INSERT INTO site_transactions (userId, type, amount, currency, description, status) VALUES (?, ?, ?, ?, ?, ?)`,
+      [transaction.userId, transaction.type, transaction.amount, transaction.currency, transaction.description, transaction.status]
+    );
+    const rows = await query(`SELECT * FROM site_transactions WHERE id = ?`, [result.insertId]);
+    return rows[0];
   }
-
   async updateTransaction(id: number, updates: Partial<Transaction>): Promise<Transaction | undefined> {
-    const data = readJson<TransactionsData>("transactions.json");
-    if (!data.transactions) return undefined;
-    const index = data.transactions.findIndex(t => t.id === id);
-    if (index === -1) return undefined;
-    data.transactions[index] = { ...data.transactions[index], ...updates };
-    writeJson("transactions.json", data);
-    return data.transactions[index];
+    const fields = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    const values = Object.values(updates);
+    await query(`UPDATE site_transactions SET ${fields} WHERE id = ?`, [...values, id]);
+    const rows = await query(`SELECT * FROM site_transactions WHERE id = ?`, [id]);
+    return rows[0];
   }
 
+  // OAUTH ACCOUNTS
   async getOAuthAccounts(userId: number): Promise<OAuthAccount[]> {
-    const data = readJson<OAuthAccountsData>("oauth_accounts.json");
-    if (!data.accounts) return [];
-    return data.accounts.filter(a => a.userId === userId);
+    return query(`SELECT * FROM site_oauth_accounts WHERE userId = ?`, [userId]);
   }
-
   async getOAuthAccountByProvider(provider: string, providerId: string): Promise<OAuthAccount | undefined> {
-    const data = readJson<OAuthAccountsData>("oauth_accounts.json");
-    if (!data.accounts) return undefined;
-    return data.accounts.find(a => a.provider === provider && a.providerId === providerId);
+    const rows = await query(`SELECT * FROM site_oauth_accounts WHERE provider = ? AND providerId = ?`, [provider, providerId]);
+    return rows[0];
   }
-
   async createOAuthAccount(account: Omit<OAuthAccount, "id" | "createdAt">): Promise<OAuthAccount> {
-    const data = readJson<OAuthAccountsData>("oauth_accounts.json");
-    if (!data.accounts) data.accounts = [];
-    const newAccount: OAuthAccount = {
-      ...account,
-      id: data.nextId || 1,
-      createdAt: new Date().toISOString(),
-    };
-    data.accounts.push(newAccount);
-    data.nextId = (data.nextId || 1) + 1;
-    writeJson("oauth_accounts.json", data);
-    return newAccount;
+    const result = await query(
+      `INSERT INTO site_oauth_accounts (userId, provider, providerId, username, avatarUrl) VALUES (?, ?, ?, ?, ?)`,
+      [account.userId, account.provider, account.providerId, account.username, account.avatarUrl]
+    );
+    const rows = await query(`SELECT * FROM site_oauth_accounts WHERE id = ?`, [result.insertId]);
+    return rows[0];
   }
-
   async updateOAuthAccount(id: number, updates: Partial<OAuthAccount>): Promise<OAuthAccount | undefined> {
-    const data = readJson<OAuthAccountsData>("oauth_accounts.json");
-    if (!data.accounts) return undefined;
-    const index = data.accounts.findIndex(a => a.id === id);
-    if (index === -1) return undefined;
-    data.accounts[index] = { ...data.accounts[index], ...updates };
-    writeJson("oauth_accounts.json", data);
-    return data.accounts[index];
+    const fields = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    const values = Object.values(updates);
+    await query(`UPDATE site_oauth_accounts SET ${fields} WHERE id = ?`, [...values, id]);
+    const rows = await query(`SELECT * FROM site_oauth_accounts WHERE id = ?`, [id]);
+    return rows[0];
   }
-
   async deleteOAuthAccount(id: number): Promise<boolean> {
-    const data = readJson<OAuthAccountsData>("oauth_accounts.json");
-    if (!data.accounts) return false;
-    const index = data.accounts.findIndex(a => a.id === id);
-    if (index === -1) return false;
-    data.accounts.splice(index, 1);
-    writeJson("oauth_accounts.json", data);
-    return true;
+    const result = await query(`DELETE FROM site_oauth_accounts WHERE id = ?`, [id]);
+    return result.affectedRows > 0;
   }
 
+  // API KEYS
   async getApiKeys(): Promise<ApiKey[]> {
-    const data = readJson<ApiKeysData>("api_keys.json");
-    return data.keys || [];
+    return query(`SELECT * FROM site_api_keys`);
   }
-
   async getApiKeyByKey(key: string): Promise<ApiKey | undefined> {
-    const keys = await this.getApiKeys();
-    return keys.find(k => k.key === key && k.isActive);
+    const rows = await query(`SELECT * FROM site_api_keys WHERE key_value = ? AND isActive = TRUE`, [key]);
+    return rows[0];
   }
-
   async createApiKey(apiKey: Omit<ApiKey, "id" | "createdAt" | "lastUsed">): Promise<ApiKey> {
-    const data = readJson<ApiKeysData>("api_keys.json");
-    if (!data.keys) data.keys = [];
-    const newKey: ApiKey = {
-      ...apiKey,
-      id: data.nextId || 1,
-      lastUsed: null,
-      createdAt: new Date().toISOString(),
-    };
-    data.keys.push(newKey);
-    data.nextId = (data.nextId || 1) + 1;
-    writeJson("api_keys.json", data);
-    return newKey;
+    const result = await query(
+      `INSERT INTO site_api_keys (name, key_value, isActive) VALUES (?, ?, ?)`,
+      [apiKey.name, (apiKey as any).key, apiKey.isActive ?? true]
+    );
+    const rows = await query(`SELECT * FROM site_api_keys WHERE id = ?`, [result.insertId]);
+    return rows[0];
   }
-
   async updateApiKey(id: number, updates: Partial<ApiKey>): Promise<ApiKey | undefined> {
-    const data = readJson<ApiKeysData>("api_keys.json");
-    if (!data.keys) return undefined;
-    const index = data.keys.findIndex(k => k.id === id);
-    if (index === -1) return undefined;
-    data.keys[index] = { ...data.keys[index], ...updates };
-    writeJson("api_keys.json", data);
-    return data.keys[index];
+    const fields = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    const values = Object.values(updates);
+    await query(`UPDATE site_api_keys SET ${fields} WHERE id = ?`, [...values, id]);
+    const rows = await query(`SELECT * FROM site_api_keys WHERE id = ?`, [id]);
+    return rows[0];
   }
-
   async deleteApiKey(id: number): Promise<boolean> {
-    const data = readJson<ApiKeysData>("api_keys.json");
-    if (!data.keys) return false;
-    const index = data.keys.findIndex(k => k.id === id);
-    if (index === -1) return false;
-    data.keys.splice(index, 1);
-    writeJson("api_keys.json", data);
-    return true;
+    const result = await query(`DELETE FROM site_api_keys WHERE id = ?`, [id]);
+    return result.affectedRows > 0;
   }
 
+  // PENDING ORDERS
   async getPendingOrder(orderId: string): Promise<PendingOrder | undefined> {
-    const data = readJson<PendingOrdersData>("pending_orders.json");
-    return (data.orders || []).find(o => o.orderId === orderId);
+    const rows = await query(`SELECT * FROM site_pending_orders WHERE orderId = ?`, [orderId]);
+    return rows[0];
   }
-
   async createPendingOrder(order: Omit<PendingOrder, "createdAt">): Promise<PendingOrder> {
-    const data = readJson<PendingOrdersData>("pending_orders.json");
-    if (!data.orders) data.orders = [];
-    const newOrder: PendingOrder = {
-      ...order,
-      createdAt: new Date().toISOString(),
-    };
-    data.orders.push(newOrder);
-    writeJson("pending_orders.json", data);
-    return newOrder;
+    await query(
+      `INSERT INTO site_pending_orders (orderId, userId, productId, amount, currency, status) VALUES (?, ?, ?, ?, ?, ?)`,
+      [order.orderId, (order as any).userId, (order as any).productId, (order as any).amount, (order as any).currency, (order as any).status]
+    );
+    return this.getPendingOrder(order.orderId) as Promise<PendingOrder>;
   }
-
   async updatePendingOrder(orderId: string, updates: Partial<PendingOrder>): Promise<PendingOrder | undefined> {
-    const data = readJson<PendingOrdersData>("pending_orders.json");
-    if (!data.orders) return undefined;
-    const index = data.orders.findIndex(o => o.orderId === orderId);
-    if (index === -1) return undefined;
-    data.orders[index] = { ...data.orders[index], ...updates };
-    writeJson("pending_orders.json", data);
-    return data.orders[index];
+    const fields = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    const values = Object.values(updates);
+    await query(`UPDATE site_pending_orders SET ${fields} WHERE orderId = ?`, [...values, orderId]);
+    return this.getPendingOrder(orderId);
   }
 }
 
 export const storage = new JsonStorage();
-
-// Helper to keep data files in sync
-function ensureDataFiles() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-
-  const files = [
-    "users.json", "news.json", "staff.json", "rules.json",
-    "products.json", "tickets.json", "ticket_messages.json", "faqs.json", "balances.json",
-    "transactions.json", "oauth_accounts.json", "api_keys.json", "pending_orders.json", "settings.json"
-  ];
-
-  files.forEach(file => {
-    if (!fs.existsSync(path.join(DATA_DIR, file))) {
-      if (file === "settings.json") {
-        fs.writeFileSync(path.join(DATA_DIR, file), JSON.stringify({
-          serverName: "MTA Server",
-          serverIp: "127.0.0.1:22003",
-          maintenanceMode: false,
-          discordUrl: "",
-          storeEnabled: true
-        }, null, 2));
-      } else if (file === "balances.json") {
-        fs.writeFileSync(path.join(DATA_DIR, file), JSON.stringify({ balances: [] }, null, 2));
-      } else if (file === "pending_orders.json") {
-        fs.writeFileSync(path.join(DATA_DIR, file), JSON.stringify({ orders: [] }, null, 2));
-      } else {
-        fs.writeFileSync(path.join(DATA_DIR, file), JSON.stringify({ [file.split('.')[0]]: [], nextId: 1 }, null, 2));
-      }
-    }
-  });
-}
-
-ensureDataFiles();
